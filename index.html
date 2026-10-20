@@ -1,0 +1,1259 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cruzeiro Orbital</title>
+<meta name="description" content="Constelação brasileira de 12 satélites que fotografa o Brasil a cada 90 minutos: desmatamento, safras e enchentes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: painel de missão. Texto alinhado à esquerda, instrumentos à direita; seções empilhadas numa coluna de 1200px. Tema escuro único, por escolha.
+   Tokens no padrão do shadcn/ui (background, card, muted, primary, ring...). Tabs, Slider, Accordion, Badge e Toast seguem a anatomia dos componentes shadcn (data-slot / data-state). */
+:root {
+  --background: #05070d;        /* espaço */
+  --foreground: #eef2f8;        /* texto principal */
+  --card: #0a1020;              /* fundo de painel */
+  --card-2: #0e1629;
+  --muted: #111a30;
+  --muted-foreground: #8e9bb3;  /* texto secundário */
+  --border: #1c2842;
+  --input: #2c3d63;
+  --primary: #5b9bff;           /* telemetria, links */
+  --primary-deep: #2f6fe0;
+  --primary-foreground: #06102a;
+  --ring: #5b9bff;
+  --warning: #f4b740;           /* satélites, alertas */
+  --destructive: #ff6b5a;
+  --success: #4fd18b;
+  --flood: #4fc3d9;
+  --font-display: "Exo", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Roboto Mono", ui-monospace, Consolas, monospace;
+  --step--1: clamp(0.8rem, 0.78rem + 0.1vw, 0.86rem);
+  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.1rem);
+  --step-1: clamp(1.2rem, 1.1rem + 0.5vw, 1.45rem);
+  --step-2: clamp(1.6rem, 1.3rem + 1.4vw, 2.4rem);
+  --step-3: clamp(2.3rem, 1.6rem + 3.2vw, 4.4rem);
+  --radius: 6px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  line-height: 1.55;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+#stars { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+a { color: var(--primary); text-decoration: none; }
+a:hover { color: var(--foreground); }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 3px; }
+h1, h2, h3 { line-height: 1.08; text-wrap: balance; margin: 0; letter-spacing: -0.02em; }
+p { margin: 0; }
+.wrap { width: 100%; max-width: 1200px; margin-inline: auto; padding-inline: clamp(16px, 4vw, 40px); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- Barra superior ---------- */
+.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: color-mix(in srgb, var(--background) 78%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.bar { display: flex; align-items: center; gap: 24px; min-height: 64px; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--foreground); font-weight: 700; font-size: 1.05rem; letter-spacing: 0.01em; }
+.brand svg { width: 26px; height: 26px; flex: none; }
+.top nav { display: flex; gap: 22px; margin-left: auto; }
+.top nav a { color: var(--muted-foreground); font-size: 0.95rem; font-weight: 500; transition: color .2s; }
+.top nav a:hover { color: var(--foreground); }
+@media (max-width: 860px) { .top nav { display: none; } .bar .btn { margin-left: auto; } }
+
+/* ---------- Botões ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 10px 20px; border-radius: var(--radius);
+  font: 600 0.98rem/1 var(--font-display); letter-spacing: 0.01em; cursor: pointer;
+  border: 1px solid transparent; transition: background .2s, border-color .2s, box-shadow .25s, color .2s;
+}
+.btn-primary { background: var(--primary); color: #06102a; }
+.btn-primary:hover { background: #7cb0ff; color: #06102a; box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 22%, transparent), 0 0 28px color-mix(in srgb, var(--primary) 45%, transparent); }
+.btn-ghost { border-color: var(--input); color: var(--foreground); background: transparent; }
+.btn-ghost:hover { border-color: var(--primary); color: var(--foreground); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.btn-small { min-height: 38px; padding: 8px 14px; font-size: 0.9rem; }
+
+/* ---------- Hero ---------- */
+.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(24px, 4vw, 56px); align-items: center; padding-block: clamp(36px, 6vw, 72px) clamp(28px, 4vw, 48px); }
+.hero-copy { display: grid; gap: 22px; min-width: 0; }
+.status { display: inline-flex; align-items: center; gap: 10px; justify-self: start; padding: 6px 12px; border: 1px solid var(--input); border-radius: 999px; font: 500 0.82rem/1.2 var(--font-mono); color: var(--muted-foreground); }
+.status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 60%, transparent); animation: ping 2.2s infinite; }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 55%, transparent); } 80%, 100% { box-shadow: 0 0 0 10px transparent; } }
+.hero h1 { font-size: var(--step-3); font-weight: 800; letter-spacing: -0.035em; max-width: 14ch; }
+.hero h1 .w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.1em; margin-bottom: -0.1em; }
+.hero h1 .w > span { display: inline-block; }
+.lede { color: var(--muted-foreground); font-size: var(--step-1); line-height: 1.5; max-width: 34em; font-weight: 400; }
+.lede strong { color: var(--foreground); font-weight: 600; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+.instrument { display: grid; gap: 16px; min-width: 0; }
+.globe-frame { position: relative; width: 100%; max-width: 560px; aspect-ratio: 1; justify-self: center; }
+#globe { width: 100%; height: 100%; display: block; cursor: grab; touch-action: pan-y; }
+#globe:active { cursor: grabbing; }
+.bracket { position: absolute; width: 22px; height: 22px; border-color: var(--input); border-style: solid; pointer-events: none; }
+.bracket.tl { top: 0; left: 0; border-width: 1px 0 0 1px; }
+.bracket.tr { top: 0; right: 0; border-width: 1px 1px 0 0; }
+.bracket.bl { bottom: 0; left: 0; border-width: 0 0 1px 1px; }
+.bracket.br { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
+.hud-label { position: absolute; font: 500 0.72rem/1.3 var(--font-mono); color: var(--muted-foreground); pointer-events: none; }
+.hud-label.a { top: 8px; left: 30px; }
+.hud-label.b { bottom: 8px; right: 30px; text-align: right; }
+.hud-label b { color: var(--warning); font-weight: 500; }
+
+.telemetry > div:last-child { grid-column: 1 / -1; }
+.telemetry { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.telemetry > div { background: var(--card); padding: 10px 14px; display: grid; gap: 2px; min-width: 0; }
+.telemetry dt { font-size: 0.78rem; color: var(--muted-foreground); }
+.telemetry dd { margin: 0; font: 500 1rem/1.3 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.telemetry dd.flash { animation: flash .6s ease-out; }
+@keyframes flash { from { color: var(--warning); } to { color: var(--foreground); } }
+.telemetry dd.live { color: var(--warning); }
+
+@media (max-width: 900px) {
+  .hero { grid-template-columns: minmax(0, 1fr); }
+  .hero h1 { max-width: 16ch; }
+}
+
+/* ---------- Faixa de registro ---------- */
+.ticker { border-block: 1px solid var(--border); background: color-mix(in srgb, var(--card) 85%, transparent); overflow: hidden; }
+.ticker-track { display: flex; width: max-content; animation: tick 60s linear infinite; }
+.ticker-track span { padding: 10px 28px; font: 400 0.82rem/1 var(--font-mono); color: var(--muted-foreground); white-space: nowrap; border-right: 1px solid var(--border); }
+.ticker-track span b { color: var(--primary); font-weight: 500; }
+.ticker-track span i { color: var(--warning); font-style: normal; }
+@keyframes tick { to { transform: translateX(-50%); } }
+
+/* ---------- Seções ---------- */
+.section { padding-block: clamp(64px, 9vw, 120px) 0; scroll-margin-top: 72px; }
+.sec-head { display: grid; gap: 14px; max-width: 46rem; margin-bottom: clamp(28px, 4vw, 48px); }
+.sec-head h2 { font-size: var(--step-2); font-weight: 700; }
+.sec-head p { color: var(--muted-foreground); font-size: var(--step-0); max-width: 40em; }
+
+/* Constelação */
+.const-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 4vw, 56px); align-items: center; }
+.orbit-fig { margin: 0; display: grid; gap: 10px; }
+.orbit-fig svg { width: 100%; height: auto; display: block; }
+.orbit-fig figcaption { font-size: var(--step--1); color: var(--muted-foreground); }
+.specs { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--border); }
+.specs > div { padding: 18px 4px 18px 0; border-bottom: 1px solid var(--border); display: grid; gap: 4px; transition: background .2s; }
+.specs > div:nth-child(odd) { padding-right: 20px; }
+.specs > div:nth-child(even) { padding-left: 20px; border-left: 1px solid var(--border); }
+.specs dt { font-size: 0.88rem; color: var(--muted-foreground); }
+.specs dd { margin: 0; font: 500 clamp(1.5rem, 1.2rem + 1vw, 2rem)/1.1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--foreground); letter-spacing: -0.02em; }
+.specs dd small { font-size: 0.55em; color: var(--muted-foreground); margin-left: 4px; letter-spacing: 0; }
+.specs .note { display: block; margin-top: 4px; font-family: var(--font-display); letter-spacing: 0; font-size: 0.8rem; color: var(--muted-foreground); }
+@media (max-width: 900px) { .const-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 420px) {
+  .specs { grid-template-columns: minmax(0, 1fr); }
+  .specs > div:nth-child(n) { padding-inline: 0; border-left: 0; }
+}
+
+/* Como funciona */
+.pipe { --p: 0; list-style: none; margin: 0; padding: 0; position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+.pipe .track, .pipe .fill { position: absolute; top: 11px; left: 11px; height: 2px; width: calc(75% + 18px); }
+.pipe .track { background: var(--border); }
+.pipe .fill { background: linear-gradient(90deg, var(--primary-deep), var(--primary)); transform-origin: left; transform: scaleX(var(--p)); }
+.pipe .packet { position: absolute; top: 6px; left: calc(11px + var(--p) * (75% + 18px) - 6px); width: 12px; height: 12px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 14px var(--warning); }
+.pipe li { position: relative; display: grid; gap: 8px; align-content: start; padding-top: 40px; min-width: 0; }
+.pipe .mark { position: absolute; top: 0; left: 0; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--input); background: var(--background); display: grid; place-items: center; font: 500 0.72rem/1 var(--font-mono); color: var(--muted-foreground); transition: border-color .3s, color .3s, background .3s; }
+.pipe li.on .mark { border-color: var(--primary); color: var(--foreground); background: var(--primary-deep); }
+.pipe h3 { font-size: var(--step-1); font-weight: 600; }
+.pipe p { color: var(--muted-foreground); font-size: 0.96rem; }
+.pipe .time { font: 500 0.82rem/1 var(--font-mono); color: var(--primary); }
+@media (max-width: 860px) {
+  .pipe { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .pipe .track, .pipe .fill, .pipe .packet { display: none; }
+  .pipe li { padding-top: 0; padding-left: 42px; }
+}
+
+/* Imagens */
+.imagery { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: clamp(24px, 3vw, 40px); align-items: start; }
+.compare-wrap { display: grid; gap: 12px; min-width: 0; }
+.compare { --split: 50; position: relative; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--input); background: var(--card); cursor: ew-resize; touch-action: pan-y; user-select: none; }
+.compare canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#ndvi { clip-path: inset(0 0 0 calc(var(--split) * 1%)); }
+.compare .handle { position: absolute; top: 0; bottom: 0; left: calc(var(--split) * 1%); width: 2px; margin-left: -1px; background: var(--foreground); box-shadow: 0 0 12px rgba(0,0,0,.6); pointer-events: none; }
+.compare .handle::after { content: ""; position: absolute; top: 50%; left: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; border: 2px solid var(--foreground); background: color-mix(in srgb, var(--background) 55%, transparent); }
+.compare .scanline { position: absolute; top: 0; bottom: 0; width: 70px; left: -80px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 35%, transparent), transparent); pointer-events: none; mix-blend-mode: screen; }
+.tag { position: absolute; top: 10px; padding: 4px 8px; border-radius: 4px; background: color-mix(in srgb, var(--background) 72%, transparent); font: 500 0.74rem/1.2 var(--font-mono); color: var(--foreground); pointer-events: none; }
+.tag.l { left: 10px; } .tag.r { right: 10px; }
+.geo { position: absolute; right: 10px; bottom: 10px; font: 400 0.72rem/1.2 var(--font-mono); color: var(--foreground); background: color-mix(in srgb, var(--background) 72%, transparent); padding: 4px 8px; border-radius: 4px; pointer-events: none; }
+.scale { position: absolute; left: 10px; bottom: 10px; display: grid; gap: 3px; font: 400 0.72rem/1 var(--font-mono); color: var(--foreground); pointer-events: none; }
+.scale i { display: block; height: 5px; border: 1px solid var(--foreground); border-top: 0; }
+.alert-box { position: absolute; border: 1.5px dashed var(--warning); border-radius: 3px; pointer-events: none; }
+.alert-box span { position: absolute; left: -1px; bottom: calc(100% + 3px); white-space: nowrap; font: 500 0.68rem/1 var(--font-mono); color: #1a1100; background: var(--warning); padding: 3px 5px; border-radius: 2px; }
+.alert-box.flip span { left: auto; right: -1px; }
+.alert-box.below span { bottom: auto; top: calc(100% + 3px); }
+.alert-box::before { content: ""; position: absolute; inset: -6px; border: 1px solid var(--warning); border-radius: 4px; opacity: 0; animation: lock 2.6s ease-out infinite; }
+@keyframes lock { 0% { opacity: .9; inset: -14px; } 60%, 100% { opacity: 0; inset: -2px; } }
+.split-control { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; font-size: 0.85rem; color: var(--muted-foreground); }
+
+/* shadcn Slider: track + range + thumb */
+[data-slot="slider"] { position: relative; display: flex; align-items: center; width: 100%; height: 24px; touch-action: none; user-select: none; cursor: pointer; }
+[data-slot="slider-track"] { position: relative; flex: 1; height: 6px; border-radius: 999px; background: var(--muted); overflow: hidden; }
+[data-slot="slider-range"] { position: absolute; inset: 0 auto 0 0; width: calc(var(--v, 50) * 1%); background: var(--primary); }
+[data-slot="slider-thumb"] { position: absolute; top: 50%; left: calc(var(--v, 50) * 1%); width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: var(--foreground); border: 1px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,.4); transition: box-shadow .15s; }
+[data-slot="slider"]:hover [data-slot="slider-thumb"], [data-slot="slider"]:focus-visible [data-slot="slider-thumb"] { box-shadow: 0 0 0 5px color-mix(in srgb, var(--ring) 35%, transparent); }
+[data-slot="slider"]:focus-visible { outline: none; }
+
+/* shadcn Tabs (variante default: lista em bloco "muted", gatilho ativo realçado) */
+[data-slot="tabs"] { display: grid; gap: 18px; }
+[data-slot="tabs-list"] { display: inline-flex; justify-self: start; max-width: 100%; overflow-x: auto; gap: 2px; padding: 3px; border-radius: calc(var(--radius) + 2px); background: var(--muted); border: 1px solid var(--border); }
+[data-slot="tabs-trigger"] { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 6px 14px; border-radius: var(--radius); border: 1px solid transparent; background: transparent; color: var(--muted-foreground); font: 500 0.92rem/1 var(--font-display); white-space: nowrap; cursor: pointer; transition: color .2s, background .2s, border-color .2s; }
+[data-slot="tabs-trigger"]:hover { color: var(--foreground); }
+[data-slot="tabs-trigger"][data-state="active"] { background: color-mix(in srgb, var(--input) 45%, var(--background)); border-color: var(--input); color: var(--foreground); box-shadow: 0 1px 2px rgba(0,0,0,.35); }
+[data-slot="tabs-trigger"] .pip { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--primary)); opacity: .45; transition: opacity .2s, box-shadow .2s; }
+[data-slot="tabs-trigger"][data-state="active"] .pip { opacity: 1; box-shadow: 0 0 8px var(--c, var(--primary)); }
+[data-slot="tabs-content"][data-state="active"] { animation: fadeUp .45s ease-out; }
+[data-slot="tabs-list"] { scrollbar-width: none; }
+@media (max-width: 520px) {
+  [data-slot="tabs-list"] { display: flex; justify-self: stretch; }
+  [data-slot="tabs-trigger"] { flex: 1; justify-content: center; gap: 6px; padding: 6px 8px; font-size: 0.86rem; }
+}
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* shadcn Badge */
+[data-slot="badge"] { display: inline-flex; align-items: center; gap: 6px; justify-self: start; width: fit-content; padding: 3px 9px; border-radius: 999px; border: 1px solid transparent; font: 500 0.74rem/1.3 var(--font-mono); white-space: nowrap; }
+[data-variant="outline"] { border-color: var(--input); color: var(--muted-foreground); }
+[data-variant="success"] { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); border-color: color-mix(in srgb, var(--success) 35%, transparent); }
+[data-variant="warning"] { color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, transparent); border-color: color-mix(in srgb, var(--warning) 35%, transparent); }
+[data-variant="secondary"] { color: var(--foreground); background: var(--muted); border-color: var(--border); }
+.legend { display: grid; gap: 6px; }
+.legend .bar { height: 10px; border-radius: 2px; background: linear-gradient(90deg, #2c4a7a 0%, #d73027 16.7%, #fc8d59 41.7%, #fee08b 58.3%, #91cf60 70.8%, #1a9850 87.5%, #0f6b37 100%); min-height: 0; }
+.legend .ticks { position: relative; height: 16px; font: 400 0.72rem/1 var(--font-mono); color: var(--muted-foreground); }
+.legend .ticks span { position: absolute; top: 0; transform: translateX(-50%); }
+.legend .ticks span:first-child { transform: none; }
+.legend-caption { font-size: 0.8rem; color: var(--muted-foreground); }
+.reading { display: grid; gap: 18px; }
+.reading h3 { font-size: var(--step-1); font-weight: 600; }
+.reading p { color: var(--muted-foreground); }
+.reading ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.reading li { background: var(--card); padding: 12px 14px; display: grid; gap: 2px; }
+.reading li b { font-weight: 600; }
+.reading li span { color: var(--muted-foreground); font-size: 0.9rem; }
+@media (max-width: 900px) { .imagery { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 520px) { .geo { display: none; } }
+
+/* Missões */
+.missions { --today: 2.76; --fill: 1; list-style: none; margin: 0; padding: 0; position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+.missions .track, .missions .fill { position: absolute; top: 5px; left: 5px; height: 2px; }
+.missions .track { width: calc(75% + 18px); background: repeating-linear-gradient(90deg, var(--input) 0 6px, transparent 6px 12px); }
+.missions .fill { width: calc(var(--today) * (25% + 6px)); background: var(--primary); transform-origin: left; transform: scaleX(var(--fill)); }
+.missions .today { position: absolute; top: -22px; left: calc(5px + var(--today) * (25% + 6px)); transform: translateX(-50%); font: 500 0.72rem/1 var(--font-mono); color: var(--primary); white-space: nowrap; }
+.missions .today::after { content: ""; position: absolute; left: 50%; top: 18px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent); }
+.missions li { position: relative; padding-top: 30px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.missions li::before { content: ""; position: absolute; top: 0; left: 0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--primary); background: var(--background); }
+.missions li.planned::before { border-color: var(--muted-foreground); border-style: dashed; }
+.missions time { font: 500 0.85rem/1 var(--font-mono); color: var(--muted-foreground); }
+.missions h3 { font-size: 1.15rem; font-weight: 600; }
+.missions p { color: var(--muted-foreground); font-size: 0.94rem; }
+.chip { justify-self: start; font: 500 0.74rem/1 var(--font-mono); padding: 5px 8px; border-radius: 999px; border: 1px solid; }
+.chip.done { color: var(--success); border-color: color-mix(in srgb, var(--success) 45%, transparent); }
+.chip.next { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 45%, transparent); }
+@media (max-width: 860px) {
+  .missions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .missions .track, .missions .fill, .missions .today { display: none; }
+}
+@media (max-width: 480px) { .missions { grid-template-columns: minmax(0, 1fr); } }
+
+/* Contato */
+.contact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: clamp(24px, 4vw, 56px); align-items: start; }
+.contact .sec-head { margin-bottom: 0; }
+.station { display: grid; gap: 4px; margin-top: 12px; font-size: 0.92rem; color: var(--muted-foreground); }
+.station b { color: var(--foreground); font-weight: 600; }
+form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: clamp(18px, 3vw, 28px); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+label { font-size: 0.88rem; font-weight: 500; }
+input, select, textarea { width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 4px; border: 1px solid var(--input); background: var(--background); color: var(--foreground); font: 400 1rem/1.4 var(--font-display); transition: border-color .2s, box-shadow .2s; }
+textarea { min-height: 96px; resize: vertical; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent); }
+.form-foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.form-note { font-size: 0.85rem; color: var(--muted-foreground); }
+@media (max-width: 860px) { .contact { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 520px) { form { grid-template-columns: minmax(0, 1fr); } }
+
+/* Legenda da enchente */
+.swatches { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 0.8rem; color: var(--muted-foreground); }
+.swatches span { display: inline-flex; align-items: center; gap: 8px; }
+.swatches i { width: 18px; height: 10px; border-radius: 2px; background: var(--c); }
+
+/* Painel de leitura de cada aba */
+.metrics { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.metrics > div { background: var(--card); padding: 12px 14px; display: grid; gap: 2px; min-width: 0; }
+.metrics > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.metrics dt { font-size: 0.8rem; color: var(--muted-foreground); }
+.metrics dd { margin: 0; font: 500 1.15rem/1.25 var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* shadcn Accordion: altura animada com grid-template-rows */
+.faq { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: clamp(24px, 4vw, 56px); align-items: start; }
+.faq .sec-head { margin-bottom: 0; }
+[data-slot="accordion"] { border-top: 1px solid var(--border); }
+[data-slot="accordion-item"] { border-bottom: 1px solid var(--border); }
+[data-slot="accordion-trigger"] { width: 100%; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 2px; background: none; border: 0; color: var(--foreground); font: 600 1.05rem/1.4 var(--font-display); text-align: left; cursor: pointer; border-radius: 4px; }
+[data-slot="accordion-trigger"]:hover { color: var(--primary); }
+[data-slot="accordion-trigger"] svg { flex: none; width: 18px; height: 18px; margin-top: 2px; color: var(--muted-foreground); transition: transform .25s ease; }
+[data-slot="accordion-trigger"][aria-expanded="true"] svg { transform: rotate(180deg); color: var(--primary); }
+[data-slot="accordion-content"] { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s ease; }
+[data-slot="accordion-content"][data-state="open"] { grid-template-rows: 1fr; }
+[data-slot="accordion-content"] > div { overflow: hidden; }
+[data-slot="accordion-content"] p { padding: 0 2px 18px; color: var(--muted-foreground); max-width: 60ch; }
+@media (max-width: 860px) { .faq { grid-template-columns: minmax(0, 1fr); } }
+
+/* Toast no estilo Sonner */
+.toaster { position: fixed; z-index: 50; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px; width: min(380px, calc(100vw - 32px)); margin: 0; padding: 0; list-style: none; pointer-events: none; }
+.toast { pointer-events: auto; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 14px 14px 14px 16px; border-radius: calc(var(--radius) + 2px); background: var(--card-2); border: 1px solid var(--input); box-shadow: 0 12px 32px rgba(0,0,0,.5); animation: toastIn .35s cubic-bezier(.2,.9,.3,1.2); }
+.toast.out { animation: toastOut .25s ease-in forwards; }
+.toast svg { width: 18px; height: 18px; margin-top: 2px; color: var(--c); }
+.toast b { font-weight: 600; font-size: 0.95rem; }
+.toast p { grid-column: 2; color: var(--muted-foreground); font-size: 0.86rem; }
+.toast button { grid-row: 1; grid-column: 3; background: none; border: 0; color: var(--muted-foreground); cursor: pointer; font-size: 1.1rem; line-height: 1; padding: 2px 4px; border-radius: 4px; }
+.toast button:hover { color: var(--foreground); }
+@keyframes toastIn { from { opacity: 0; transform: translateY(16px) scale(.97); } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(24px); } }
+
+footer { margin-top: clamp(64px, 9vw, 120px); border-top: 1px solid var(--border); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 32px; justify-content: space-between; padding-block: 28px; font-size: 0.85rem; color: var(--muted-foreground); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .ticker-track, .status .dot, .alert-box::before, .toast, .toast.out, [data-slot="tabs-content"][data-state="active"] { animation: none; }
+  [data-slot="accordion-content"], [data-slot="accordion-trigger"] svg { transition: none; }
+}
+</style>
+
+<canvas id="stars" aria-hidden="true"></canvas>
+
+<header class="top">
+  <div class="wrap bar">
+    <a class="brand" href="#inicio" aria-label="Cruzeiro Orbital, início">
+      <svg viewBox="0 0 26 26" aria-hidden="true">
+        <circle cx="13" cy="3" r="2" fill="#eef2f8"/>
+        <circle cx="13" cy="23" r="2.4" fill="#eef2f8"/>
+        <circle cx="4.5" cy="12" r="1.9" fill="#eef2f8"/>
+        <circle cx="21" cy="10.5" r="1.5" fill="#eef2f8"/>
+        <circle cx="16.5" cy="16" r="1" fill="#f4b740"/>
+        <path d="M13 5v16M6.4 12l13-1.3" stroke="#5b9bff" stroke-width=".8" opacity=".7"/>
+      </svg>
+      Cruzeiro Orbital
+    </a>
+    <nav aria-label="Seções">
+      <a href="#constelacao">Constelação</a>
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#imagens">Imagens</a>
+      <a href="#missoes">Missões</a>
+      <a href="#perguntas">Perguntas</a>
+    </nav>
+    <a class="btn btn-ghost btn-small" href="#contato">Falar com a equipe</a>
+  </div>
+</header>
+
+<main>
+  <section id="inicio" class="wrap hero">
+    <div class="hero-copy">
+      <p class="status"><span class="dot" aria-hidden="true"></span><span>12 de 12 satélites operando</span></p>
+      <h1 id="hero-title">O Brasil inteiro, fotografado a cada 90 minutos.</h1>
+      <p class="lede">A Cruzeiro Orbital opera 12 satélites de observação em órbita baixa. Detectamos desmatamento, acompanhamos safras e mapeamos enchentes com imagens de <strong>50 cm por pixel</strong>, entregues em <strong>menos de 3 horas</strong>.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="#imagens">Ver imagens de exemplo</a>
+        <a class="btn btn-ghost" href="#contato">Falar com a equipe</a>
+      </div>
+    </div>
+
+    <div class="instrument">
+      <div class="globe-frame">
+        <canvas id="globe" role="img" aria-label="Globo animado com 12 satélites em três planos orbitais passando sobre o Brasil e sobre a estação terrestre de Alcântara. Arraste para girar."></canvas>
+        <span class="bracket tl"></span><span class="bracket tr"></span><span class="bracket bl"></span><span class="bracket br"></span>
+        <span class="hud-label a">VISTA ORTOGRÁFICA<br>arraste para girar</span>
+        <span class="hud-label b"><b>●</b> Estação Alcântara (MA)<br>−2,3°  −44,4°</span>
+      </div>
+      <dl class="telemetry" aria-label="Telemetria da constelação">
+        <div><dt>Horário UTC</dt><dd id="t-utc">14:20:05</dd></div>
+        <div><dt>Tempo de missão</dt><dd id="t-met">T+ 942d 06:12</dd></div>
+        <div><dt>Próxima passagem, São Paulo</dt><dd id="t-pass">31:48</dd></div>
+        <div><dt>Em contato com Alcântara</dt><dd id="t-link">CO-07</dd></div>
+        <div><dt>Imagens capturadas hoje</dt><dd id="t-img">7.034</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-track" id="ticker">
+      <span><b>CO-04</b> IMG 18.442 Rondônia −10,9° −62,4°</span>
+      <span><b>CO-09</b> DOWNLINK Alcântara 1,2 Gbit/s</span>
+      <span><b>CO-11</b> <i>ALERTA</i> desmatamento 1,4 ha, Pará</span>
+      <span><b>CO-02</b> IMG 18.447 Mato Grosso −12,6° −55,7°</span>
+      <span><b>CO-07</b> NDVI soja 0,71, Goiás</span>
+      <span><b>CO-12</b> IMG 18.451 Rio Grande do Sul −29,7° −53,8°</span>
+      <span><b>CO-05</b> <i>ALERTA</i> nível do rio +2,3 m, Amazonas</span>
+      <span><b>CO-01</b> MANOBRA correção de altitude +120 m</span>
+    </div>
+  </div>
+
+  <section id="constelacao" class="wrap section">
+    <div class="sec-head">
+      <h2 class="scr">A constelação</h2>
+      <p>Três planos orbitais com quatro satélites cada. A órbita é heliossíncrona: cada satélite cruza o equador sempre às 10h30 no horário local, então a luz é a mesma em todas as imagens e dá para comparar um dia com o outro.</p>
+    </div>
+    <div class="const-grid">
+      <figure class="orbit-fig">
+        <svg id="orbit-svg" viewBox="0 0 420 300" role="img" aria-label="Diagrama da órbita: o Sol à esquerda, a Terra com metade iluminada e um satélite percorrendo uma órbita inclinada a 550 km de altitude.">
+          <defs>
+            <radialGradient id="earthLit" cx="35%" cy="45%" r="70%">
+              <stop offset="0%" stop-color="#3a78d8"/>
+              <stop offset="55%" stop-color="#1b3f86"/>
+              <stop offset="100%" stop-color="#0a1633"/>
+            </radialGradient>
+            <linearGradient id="night" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="45%" stop-color="#05070d" stop-opacity="0"/>
+              <stop offset="62%" stop-color="#05070d" stop-opacity=".78"/>
+            </linearGradient>
+          </defs>
+          <g id="sun" transform="translate(34 150)">
+            <circle r="13" fill="#f4b740"/>
+            <g stroke="#f4b740" stroke-width="1.5" stroke-linecap="round" opacity=".8">
+              <line x1="0" y1="-20" x2="0" y2="-25"/><line x1="0" y1="20" x2="0" y2="25"/>
+              <line x1="-20" y1="0" x2="-25" y2="0"/><line x1="20" y1="0" x2="25" y2="0"/>
+              <line x1="14" y1="14" x2="18" y2="18"/><line x1="-14" y1="-14" x2="-18" y2="-18"/>
+              <line x1="14" y1="-14" x2="18" y2="-18"/><line x1="-14" y1="14" x2="-18" y2="18"/>
+            </g>
+            <text y="44" text-anchor="middle" fill="#8e9bb3" font-family="Roboto Mono, monospace" font-size="11">Sol</text>
+          </g>
+          <g stroke="#f4b740" stroke-opacity=".18" stroke-dasharray="2 6">
+            <line x1="62" y1="110" x2="160" y2="110"/><line x1="62" y1="150" x2="160" y2="150"/><line x1="62" y1="190" x2="160" y2="190"/>
+          </g>
+          <path id="orbit-back" fill="none" stroke="#2c3d63" stroke-width="1.2" stroke-dasharray="3 5"/>
+          <circle cx="240" cy="150" r="72" fill="url(#earthLit)"/>
+          <circle cx="240" cy="150" r="72" fill="url(#night)"/>
+          <circle cx="240" cy="150" r="72" fill="none" stroke="#5b9bff" stroke-opacity=".35"/>
+          <path id="orbit-front" fill="none" stroke="#5b9bff" stroke-width="1.5"/>
+          <g id="dim" font-family="Roboto Mono, monospace" font-size="11" fill="#8e9bb3">
+            <line x1="240" y1="78" x2="240" y2="52" stroke="#8e9bb3" stroke-width="1"/>
+            <line x1="234" y1="78" x2="246" y2="78" stroke="#8e9bb3" stroke-width="1"/>
+            <line x1="234" y1="52" x2="246" y2="52" stroke="#8e9bb3" stroke-width="1"/>
+            <text x="252" y="69">550 km</text>
+          </g>
+          <g id="sat">
+            <rect x="-9" y="-2" width="6" height="4" fill="#5b9bff"/>
+            <rect x="3" y="-2" width="6" height="4" fill="#5b9bff"/>
+            <rect x="-3" y="-3" width="6" height="6" rx="1" fill="#f4b740"/>
+          </g>
+          <text x="400" y="288" text-anchor="end" fill="#8e9bb3" font-family="Roboto Mono, monospace" font-size="11">inclinação 97,6°</text>
+        </svg>
+        <figcaption>Fora de escala. Na proporção real, a órbita de 550 km ficaria quase colada à Terra, que tem 6.371 km de raio.</figcaption>
+      </figure>
+
+      <dl class="specs">
+        <div><dt>Altitude</dt><dd><span class="count" data-to="550" data-dec="0">550</span><small>km</small></dd></div>
+        <div><dt>Inclinação</dt><dd><span class="count" data-to="97.6" data-dec="1">97,6</span><small>graus</small></dd></div>
+        <div><dt>Uma volta na Terra</dt><dd><span class="count" data-to="95.6" data-dec="1">95,6</span><small>min</small></dd></div>
+        <div><dt>Velocidade</dt><dd><span class="count" data-to="7.59" data-dec="2">7,59</span><small>km/s</small></dd></div>
+        <div><dt>Resolução</dt><dd><span class="count" data-to="50" data-dec="0">50</span><small>cm/pixel</small></dd></div>
+        <div><dt>Revisita no Brasil</dt><dd><span class="count" data-to="90" data-dec="0">90</span><small>min</small><span class="note">45 min a partir de 2027</span></dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section id="como-funciona" class="wrap section">
+    <div class="sec-head">
+      <h2 class="scr">Da órbita ao seu painel</h2>
+      <p>Uma imagem leva menos de 3 horas para sair da câmera e virar um alerta no seu sistema. O tempo mais longo é esperar o satélite passar sobre a estação de Alcântara.</p>
+    </div>
+    <ol class="pipe" id="pipe">
+      <span class="track" aria-hidden="true"></span>
+      <span class="fill" aria-hidden="true"></span>
+      <span class="packet" aria-hidden="true"></span>
+      <li class="on"><span class="mark">1</span><span class="time">T+0</span><h3>Captura</h3><p>A câmera registra uma faixa de 12 km de largura em cor natural e em infravermelho próximo.</p></li>
+      <li><span class="mark">2</span><span class="time">T+38 min</span><h3>Descarga</h3><p>Na passagem sobre Alcântara, o satélite envia os dados em banda X a 1,2 Gbit/s.</p></li>
+      <li><span class="mark">3</span><span class="time">T+1h25</span><h3>Processamento</h3><p>Corrigimos relevo e nuvens, calculamos o índice de vegetação e comparamos com a passagem anterior.</p></li>
+      <li><span class="mark">4</span><span class="time">T+2h50</span><h3>Entrega</h3><p>O alerta chega por API ou no painel, com a área em hectares e as coordenadas do polígono.</p></li>
+    </ol>
+  </section>
+
+  <section id="imagens" class="wrap section">
+    <div class="sec-head">
+      <h2 class="scr">O que a câmera vê</h2>
+      <p>Escolha um uso e arraste a linha para comparar as duas imagens. As três cenas são simuladas, mas seguem a escala real: 5 metros por pixel.</p>
+    </div>
+    <div data-slot="tabs" id="scene-tabs">
+      <div data-slot="tabs-list" role="tablist" aria-label="Exemplos de uso">
+        <button data-slot="tabs-trigger" role="tab" type="button" id="tab-desmat" aria-controls="panel-desmat" aria-selected="true" data-state="active" data-scene="desmat" style="--c: var(--destructive)"><span class="pip" aria-hidden="true"></span>Desmatamento</button>
+        <button data-slot="tabs-trigger" role="tab" type="button" id="tab-safras" aria-controls="panel-safras" aria-selected="false" data-state="inactive" data-scene="safras" tabindex="-1" style="--c: var(--success)"><span class="pip" aria-hidden="true"></span>Safras</button>
+        <button data-slot="tabs-trigger" role="tab" type="button" id="tab-cheia" aria-controls="panel-cheia" aria-selected="false" data-state="inactive" data-scene="cheia" tabindex="-1" style="--c: var(--flood)"><span class="pip" aria-hidden="true"></span>Enchentes</button>
+      </div>
+
+      <div class="imagery">
+        <div class="compare-wrap">
+          <div class="compare" id="compare">
+            <canvas id="truecolor" width="640" height="360"></canvas>
+            <canvas id="ndvi" width="640" height="360"></canvas>
+            <div class="scanline" id="scanline"></div>
+            <div id="alerts"></div>
+            <div class="handle" aria-hidden="true"></div>
+            <span class="tag l" id="tag-l">Cor natural</span>
+            <span class="tag r" id="tag-r">NDVI</span>
+            <span class="scale" style="width: 15.6%"><span>500 m</span><i></i></span>
+            <span class="geo" id="geo">Rondônia  −9,87°  −63,02°</span>
+          </div>
+          <div class="split-control">
+            <span id="split-l">Cor natural</span>
+            <div data-slot="slider" id="split" role="slider" tabindex="0" aria-label="Posição da comparação" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" style="--v: 50">
+              <div data-slot="slider-track"><div data-slot="slider-range"></div></div>
+              <div data-slot="slider-thumb"></div>
+            </div>
+            <span id="split-r">NDVI</span>
+          </div>
+          <div class="legend" id="legend-ndvi">
+            <div class="bar" aria-hidden="true"></div>
+            <div class="ticks" aria-hidden="true">
+              <span style="left: 0%">−0,2</span><span style="left: 16.7%">0</span><span style="left: 50%">0,4</span><span style="left: 83.3%">0,8</span>
+            </div>
+            <p class="legend-caption">NDVI vai de −0,2 (água) a 0,8 ou mais (vegetação densa). Imagem simulada para demonstração.</p>
+          </div>
+          <div class="legend" id="legend-flood" hidden>
+            <div class="swatches">
+              <span><i style="--c: #2c4a6a"></i>Leito normal do rio</span>
+              <span><i style="--c: var(--flood)"></i>Água da cheia</span>
+              <span><i style="--c: #9a9ca3"></i>Área urbana</span>
+            </div>
+            <p class="legend-caption">A água da cheia aparece realçada em ciano. Imagem simulada para demonstração.</p>
+          </div>
+        </div>
+
+        <div>
+          <div data-slot="tabs-content" role="tabpanel" id="panel-desmat" aria-labelledby="tab-desmat" data-state="active" class="reading">
+            <h3>A espinha de peixe</h3>
+            <p>Em Rondônia, o desmatamento segue as estradas: uma via principal e ramais perpendiculares a cada poucos quilômetros. Visto de cima, o padrão lembra uma espinha de peixe. Os quadros amarelos marcam áreas abertas desde a passagem anterior.</p>
+            <dl class="metrics">
+              <div><dt>Alertas nesta cena</dt><dd>3</dd></div>
+              <div><dt>Área aberta</dt><dd>4,3 ha</dd></div>
+              <div><dt>Menor área detectada</dt><dd>0,5 ha</dd></div>
+              <div><dt>Desde a última passagem</dt><dd>95 min</dd></div>
+            </dl>
+            <span data-slot="badge" data-variant="warning">Alerta enviado ao Ibama e ao cliente</span>
+          </div>
+          <div data-slot="tabs-content" role="tabpanel" id="panel-safras" aria-labelledby="tab-safras" data-state="inactive" class="reading" hidden>
+            <h3>Pivôs centrais em Sorriso</h3>
+            <p>Cada círculo é um pivô de irrigação com cerca de 40 hectares de soja. No NDVI, a lavoura saudável fica verde. O setor amarelo no pivô da direita indica falha na irrigação, e o pivô alaranjado já foi colhido.</p>
+            <dl class="metrics">
+              <div><dt>Pivôs na cena</dt><dd>8</dd></div>
+              <div><dt>Vigor médio (NDVI)</dt><dd>0,71</dd></div>
+              <div><dt>Setor sob estresse</dt><dd>6,1 ha</dd></div>
+              <div><dt>Pivôs colhidos</dt><dd>1</dd></div>
+            </dl>
+            <span data-slot="badge" data-variant="success">Relatório semanal por talhão</span>
+          </div>
+          <div data-slot="tabs-content" role="tabpanel" id="panel-cheia" aria-labelledby="tab-cheia" data-state="inactive" class="reading" hidden>
+            <h3>O rio fora do leito</h3>
+            <p>À esquerda, o rio no leito normal. À direita, sete dias depois, a água cobre as lavouras e parte da cidade. Os quadros marcam quarteirões alagados para a defesa civil priorizar o resgate.</p>
+            <dl class="metrics">
+              <div><dt>Área alagada</dt><dd id="m-flood">— ha</dd></div>
+              <div><dt>Quarteirões atingidos</dt><dd id="m-blocks">—</dd></div>
+              <div><dt>Nível do rio</dt><dd>+4,8 m</dd></div>
+              <div><dt>Tempo até o alerta</dt><dd>2h40</dd></div>
+            </dl>
+            <span data-slot="badge" data-variant="secondary">Mancha de inundação em GeoJSON</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="missoes" class="wrap section">
+    <div class="sec-head">
+      <h2 class="scr">Lançamentos</h2>
+      <p>Todos os satélites saem do Centro de Lançamento de Alcântara, no Maranhão. Perto do equador, o foguete aproveita mais a rotação da Terra e gasta menos combustível.</p>
+    </div>
+    <ol class="missions" id="missions">
+      <span class="track" aria-hidden="true"></span>
+      <span class="fill" aria-hidden="true"></span>
+      <span class="today" aria-hidden="true">hoje</span>
+      <li><time datetime="2024-03">mar 2024</time><h3>CO-01 e CO-02</h3><p>Demonstração da câmera e da descarga em banda X.</p><span data-slot="badge" data-variant="success">Em órbita</span></li>
+      <li><time datetime="2024-11">nov 2024</time><h3>CO-03 a CO-06</h3><p>Primeiro lote comercial. Revisita de 6 horas.</p><span data-slot="badge" data-variant="success">Em órbita</span></li>
+      <li><time datetime="2025-06">jun 2025</time><h3>CO-07 a CO-12</h3><p>Constelação completa com 12 satélites e revisita de 90 minutos.</p><span data-slot="badge" data-variant="success">Em órbita</span></li>
+      <li class="planned"><time datetime="2027-03">mar 2027</time><h3>CO-13 a CO-24</h3><p>Mais 12 satélites. A revisita cai para 45 minutos.</p><span data-slot="badge" data-variant="warning">Em preparação</span></li>
+    </ol>
+  </section>
+
+  <section id="perguntas" class="wrap section">
+    <div class="faq">
+      <div class="sec-head">
+        <h2 class="scr">Perguntas frequentes</h2>
+        <p>O que os clientes mais perguntam antes de contratar o monitoramento.</p>
+      </div>
+      <div data-slot="accordion" id="faq">
+        <div data-slot="accordion-item">
+          <h3><button data-slot="accordion-trigger" type="button" id="q1" aria-expanded="true" aria-controls="a1">E quando tem nuvem?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h3>
+          <div data-slot="accordion-content" id="a1" role="region" aria-labelledby="q1" data-state="open"><div><p>A câmera óptica não enxerga através de nuvens. Como passamos a cada 90 minutos, quase sempre há uma janela limpa no mesmo dia. Para enchentes, combinamos com dados de radar de parceiros, que atravessam as nuvens.</p></div></div>
+        </div>
+        <div data-slot="accordion-item">
+          <h3><button data-slot="accordion-trigger" type="button" id="q2" aria-expanded="false" aria-controls="a2">Qual é a menor área que vocês detectam?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h3>
+          <div data-slot="accordion-content" id="a2" role="region" aria-labelledby="q2" data-state="closed"><div><p>Meio hectare, um quadrado de cerca de 70 por 70 metros. Com 50 cm por pixel dá para ver árvores isoladas, mas o alerta automático começa em 0,5 ha para evitar falsos positivos.</p></div></div>
+        </div>
+        <div data-slot="accordion-item">
+          <h3><button data-slot="accordion-trigger" type="button" id="q3" aria-expanded="false" aria-controls="a3">Como os alertas chegam até mim?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h3>
+          <div data-slot="accordion-content" id="a3" role="region" aria-labelledby="q3" data-state="closed"><div><p>Pelo painel web, por e-mail ou pela API. Cada alerta traz o polígono em GeoJSON, a área em hectares, a data da imagem e um recorte antes e depois.</p></div></div>
+        </div>
+        <div data-slot="accordion-item">
+          <h3><button data-slot="accordion-trigger" type="button" id="q4" aria-expanded="false" aria-controls="a4">Dá para ver imagens antigas?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h3>
+          <div data-slot="accordion-content" id="a4" role="region" aria-labelledby="q4" data-state="closed"><div><p>Sim. Guardamos tudo desde março de 2024, quando os dois primeiros satélites entraram em operação. O arquivo cobre o Brasil inteiro.</p></div></div>
+        </div>
+        <div data-slot="accordion-item">
+          <h3><button data-slot="accordion-trigger" type="button" id="q5" aria-expanded="false" aria-controls="a5">Como é cobrado?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h3>
+          <div data-slot="accordion-content" id="a5" role="region" aria-labelledby="q5" data-state="closed"><div><p>Por área monitorada, em quilômetros quadrados por mês. O preço cai conforme a área aumenta. Na demonstração montamos uma proposta para a sua região.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contato" class="wrap section">
+    <div class="contact">
+      <div class="sec-head">
+        <h2 class="scr">Peça uma demonstração</h2>
+        <p>Mostramos imagens recentes da sua região e como os alertas chegam no seu sistema.</p>
+        <div class="station">
+          <span><b>Centro de operações</b></span>
+          <span>São José dos Campos, SP</span>
+          <span class="mono">contato@cruzeiro-orbital.example</span>
+        </div>
+      </div>
+      <form id="demo-form" novalidate>
+        <div class="field"><label for="f-name">Nome</label><input id="f-name" name="name" autocomplete="name" required></div>
+        <div class="field"><label for="f-email">E-mail de trabalho</label><input id="f-email" name="email" type="email" autocomplete="email" required></div>
+        <div class="field"><label for="f-org">Organização</label><input id="f-org" name="org" autocomplete="organization"></div>
+        <div class="field">
+          <label for="f-use">Uso principal</label>
+          <select id="f-use" name="use">
+            <option>Monitoramento ambiental</option>
+            <option>Agronegócio</option>
+            <option>Defesa civil</option>
+            <option>Outro</option>
+          </select>
+        </div>
+        <div class="field full"><label for="f-msg">Qual região você quer monitorar?</label><textarea id="f-msg" name="msg" placeholder="Ex.: municípios do sul do Pará"></textarea></div>
+        <div class="form-foot">
+          <button class="btn btn-primary" type="submit">Pedir demonstração</button>
+          <span class="form-note">Demonstração: nada é enviado.</span>
+        </div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Cruzeiro Orbital</span>
+    <span>Site de demonstração. A empresa, os satélites e as imagens são fictícios.</span>
+  </div>
+</footer>
+
+<ol class="toaster" id="toaster" aria-live="polite" aria-label="Notificações"></ol>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script>
+(() => {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const hasGsap = !!(window.gsap && window.ScrollTrigger);
+  if (hasGsap) gsap.registerPlugin(ScrollTrigger);
+  const DEG = Math.PI / 180;
+  const fmt = (v, d) => v.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+  /* ---------- Campo de estrelas ---------- */
+  const sf = document.getElementById('stars');
+  const sctx = sf.getContext('2d');
+  let stars = [], sw = 0, sh = 0, sdpr = 1;
+  function sizeStars() {
+    sdpr = Math.min(window.devicePixelRatio || 1, 2);
+    sw = innerWidth; sh = innerHeight;
+    sf.width = sw * sdpr; sf.height = sh * sdpr;
+    sctx.setTransform(sdpr, 0, 0, sdpr, 0, 0);
+    const n = Math.min(380, Math.round(sw * sh / 4200));
+    stars = Array.from({ length: n }, () => ({ x: Math.random() * sw, y: Math.random() * sh * 1.4, z: 0.2 + Math.random() * 0.8, p: Math.random() * 6.28, s: 0.5 + Math.random() * 1.5 }));
+  }
+  function drawStars(t) {
+    sctx.clearRect(0, 0, sw, sh);
+    const sy = scrollY;
+    const span = sh * 1.4;
+    for (const s of stars) {
+      let y = (s.y - sy * s.z * 0.12) % span; if (y < 0) y += span;
+      if (y > sh) continue;
+      const a = reduce ? 0.3 + 0.5 * s.z : (0.25 + 0.6 * s.z) * (0.65 + 0.35 * Math.sin(t * 0.0015 * s.s + s.p));
+      sctx.fillStyle = s.z > 0.92 ? `rgba(244,183,64,${a})` : `rgba(220,230,255,${a})`;
+      const r = s.z > 0.85 ? 1.6 : 1;
+      sctx.fillRect(s.x, y, r, r);
+    }
+  }
+
+  /* ---------- Globo ---------- */
+  const globe = document.getElementById('globe');
+  const g = globe.getContext('2d');
+  let GW = 0, GH = 0, R = 0, gcx = 0, gcy = 0;
+  function sizeGlobe() {
+    const r = globe.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    GW = r.width; GH = r.height;
+    globe.width = Math.round(GW * dpr); globe.height = Math.round(GH * dpr);
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    gcx = GW / 2; gcy = GH / 2; R = Math.min(GW, GH) * 0.33;
+  }
+  const BRAZIL = [[-60,5.2],[-51.6,4.2],[-50,1.8],[-48.4,-1.2],[-44,-2.5],[-39,-3],[-35.2,-5.4],[-34.8,-7.5],[-35.3,-9.4],[-37.1,-11],[-38.9,-13],[-39.1,-17.5],[-40.9,-21.9],[-43.1,-22.9],[-46.3,-24],[-48.5,-26],[-48.6,-28.5],[-50.3,-30.5],[-53.4,-33.7],[-57.6,-30.2],[-54.6,-25.6],[-54.3,-24],[-57.8,-22.1],[-58.2,-20.1],[-57.5,-17.5],[-60.2,-16.2],[-60.5,-13.7],[-65.3,-10.9],[-69.5,-10.9],[-72.9,-9.4],[-73.9,-7.4],[-70,-4.2],[-69.4,-1.1],[-70,0.6],[-67,2],[-64,4]];
+  function inPoly(x, y, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, yi] = poly[i], [xj, yj] = poly[j];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  const vec = (lat, lon) => [Math.cos(lat * DEG) * Math.sin(lon * DEG), Math.sin(lat * DEG), Math.cos(lat * DEG) * Math.cos(lon * DEG)];
+  const gridPts = [], brPts = [];
+  for (let lat = -75; lat <= 75; lat += 15) for (let lon = 0; lon < 360; lon += 3) gridPts.push({ v: vec(lat, lon), lat });
+  for (let lon = 0; lon < 360; lon += 20) for (let lat = -87; lat <= 87; lat += 3) gridPts.push({ v: vec(lat, lon), lat });
+  for (let lat = -34; lat <= 6; lat += 1.4) for (let lon = -74; lon <= -34; lon += 1.4) if (inPoly(lon, lat, BRAZIL)) brPts.push({ v: vec(lat, lon), lat });
+  const STATION = vec(-2.3, -44.4);
+  const SAO_PAULO = vec(-23.5, -46.6);
+  const PLANES = [-58, 2, 62];
+  const INC = 97.6 * DEG;
+  const sats = [];
+  PLANES.forEach((om, p) => { for (let k = 0; k < 4; k++) sats.push({ id: 'CO-' + String(p * 4 + k + 1).padStart(2, '0'), om: om * DEG, u0: k * Math.PI / 2 + p * 0.5 }); });
+
+  const TILT = -0.22;
+  let rot = 50 * DEG, drag = 0, dragging = false, lastX = 0, linked = null;
+  const ct = Math.cos(TILT), st = Math.sin(TILT);
+  function view(v, a) {
+    const ca = Math.cos(a), sa = Math.sin(a);
+    const x = v[0] * ca + v[2] * sa, z0 = -v[0] * sa + v[2] * ca, y0 = v[1];
+    return [x, y0 * ct - z0 * st, y0 * st + z0 * ct];
+  }
+  function satVec(s, u) {
+    const cu = Math.cos(u), su = Math.sin(u);
+    const x1 = cu, y1 = -su * Math.sin(INC), z1 = su * Math.cos(INC);
+    const co = Math.cos(s.om), so = Math.sin(s.om);
+    return [x1 * co + z1 * so, y1, -x1 * so + z1 * co];
+  }
+  const easeOut = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+  const bootStart = performance.now();
+
+  function drawGlobe(now) {
+    const t = now / 1000;
+    const boot = reduce ? 1 : Math.min(1, (now - bootStart) / 1800);
+    if (!dragging && !reduce) rot = 50 * DEG + 32 * DEG * Math.sin(t * 0.09);
+    const a = rot + drag;
+    g.clearRect(0, 0, GW, GH);
+
+    const halo = g.createRadialGradient(gcx, gcy, R * 0.9, gcx, gcy, R * 1.5);
+    halo.addColorStop(0, 'rgba(91,155,255,0.18)'); halo.addColorStop(1, 'rgba(91,155,255,0)');
+    g.fillStyle = halo; g.beginPath(); g.arc(gcx, gcy, R * 1.5, 0, 6.283); g.fill();
+    const body = g.createRadialGradient(gcx - R * 0.35, gcy - R * 0.4, R * 0.1, gcx, gcy, R);
+    body.addColorStop(0, '#13244a'); body.addColorStop(1, '#070d1c');
+    g.fillStyle = body; g.beginPath(); g.arc(gcx, gcy, R, 0, 6.283); g.fill();
+    g.strokeStyle = 'rgba(91,155,255,0.45)'; g.lineWidth = 1; g.stroke();
+
+    const band = boot * 1.25;
+    for (const pt of gridPts) {
+      if ((pt.lat + 90) / 180 > band) continue;
+      const [x, y, z] = view(pt.v, a);
+      if (z < 0) continue;
+      g.fillStyle = `rgba(142,155,179,${0.12 + 0.4 * z})`;
+      g.fillRect(gcx + x * R - 0.6, gcy - y * R - 0.6, 1.2, 1.2);
+    }
+    for (const pt of brPts) {
+      if ((pt.lat + 90) / 180 > band) continue;
+      const [x, y, z] = view(pt.v, a);
+      if (z < 0) continue;
+      g.fillStyle = `rgba(91,155,255,${0.35 + 0.6 * z})`;
+      g.fillRect(gcx + x * R - 1, gcy - y * R - 1, 2, 2);
+    }
+
+    const sv = view(STATION, a);
+    const stX = gcx + sv[0] * R, stY = gcy - sv[1] * R;
+    const spv = view(SAO_PAULO, a);
+    if (spv[2] > 0) { g.fillStyle = 'rgba(238,242,248,0.9)'; g.beginPath(); g.arc(gcx + spv[0] * R, gcy - spv[1] * R, 2, 0, 6.283); g.fill(); }
+
+    const Ro = R * (1 + 0.22 * easeOut((boot - 0.25) / 0.75));
+    const omega = 0.32;
+    let best = null, bestDot = Math.cos(28 * DEG);
+    const front = [];
+    for (const s of sats) {
+      const u = s.u0 + t * omega;
+      for (let k = 26; k >= 0; k--) {
+        const pv = view(satVec(s, u - k * 0.035), a);
+        const qv = view(satVec(s, u - (k + 1) * 0.035), a);
+        const hidden = pv[2] < 0 && (pv[0] * pv[0] + pv[1] * pv[1]) * (Ro * Ro) < R * R * 1.02;
+        g.strokeStyle = hidden ? `rgba(91,155,255,${0.04 * (1 - k / 26)})` : `rgba(91,155,255,${0.55 * (1 - k / 26)})`;
+        g.lineWidth = 1.2;
+        g.beginPath(); g.moveTo(gcx + qv[0] * Ro, gcy - qv[1] * Ro); g.lineTo(gcx + pv[0] * Ro, gcy - pv[1] * Ro); g.stroke();
+      }
+      const w = satVec(s, u);
+      const v = view(w, a);
+      const hidden = v[2] < 0 && (v[0] * v[0] + v[1] * v[1]) * (Ro * Ro) < R * R * 1.02;
+      const d = w[0] * STATION[0] + w[1] * STATION[1] + w[2] * STATION[2];
+      if (d > bestDot) { bestDot = d; best = { s, v }; }
+      front.push({ s, v, hidden });
+    }
+
+    const pulse = reduce ? 0.5 : (t % 2) / 2;
+    if (sv[2] > 0) {
+      g.strokeStyle = `rgba(244,183,64,${1 - pulse})`; g.lineWidth = 1.2;
+      g.beginPath(); g.arc(stX, stY, 3 + pulse * 14, 0, 6.283); g.stroke();
+      g.fillStyle = '#f4b740'; g.beginPath(); g.arc(stX, stY, 3, 0, 6.283); g.fill();
+      if (best && boot >= 1 && best.v[2] > -0.1) {
+        const bx = gcx + best.v[0] * Ro, by = gcy - best.v[1] * Ro;
+        g.setLineDash([4, 4]); g.lineDashOffset = -t * 30;
+        g.strokeStyle = 'rgba(244,183,64,0.85)'; g.lineWidth = 1.2;
+        g.beginPath(); g.moveTo(stX, stY); g.lineTo(bx, by); g.stroke();
+        g.setLineDash([]);
+      }
+    }
+    const nowLinked = best && sv[2] > 0 && boot >= 1 ? best.s.id : null;
+    if (nowLinked !== linked) { linked = nowLinked; updateLink(); }
+
+    for (const f of front) {
+      const x = gcx + f.v[0] * Ro, y = gcy - f.v[1] * Ro;
+      const isLink = linked === f.s.id;
+      g.globalAlpha = f.hidden ? 0.18 : 1;
+      g.fillStyle = '#5b9bff';
+      g.fillRect(x - 7, y - 1.5, 4.5, 3); g.fillRect(x + 2.5, y - 1.5, 4.5, 3);
+      g.fillStyle = isLink ? '#ffffff' : '#f4b740';
+      g.fillRect(x - 2.5, y - 2.5, 5, 5);
+      if (isLink && !f.hidden) {
+        g.font = '500 11px "Roboto Mono", monospace'; g.fillStyle = '#eef2f8';
+        g.fillText(f.s.id, x + 10, y - 6);
+      }
+      g.globalAlpha = 1;
+    }
+  }
+  globe.addEventListener('pointerdown', (e) => { dragging = true; lastX = e.clientX; globe.setPointerCapture(e.pointerId); });
+  globe.addEventListener('pointermove', (e) => { if (!dragging) return; drag += (e.clientX - lastX) * 0.008; lastX = e.clientX; if (reduce) drawGlobe(performance.now()); });
+  const endDrag = () => { dragging = false; };
+  globe.addEventListener('pointerup', endDrag); globe.addEventListener('pointercancel', endDrag);
+
+  /* ---------- Telemetria ---------- */
+  const $ = (id) => document.getElementById(id);
+  const tUtc = $('t-utc'), tMet = $('t-met'), tPass = $('t-pass'), tLink = $('t-link'), tImg = $('t-img');
+  const LAUNCH = Date.UTC(2024, 2, 14, 8, 0, 0);
+  const PERIOD = 95.6 * 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  let lastImg = -1;
+  function updateLink() { tLink.textContent = linked || 'aguardando'; tLink.classList.toggle('live', !!linked); }
+  function tickTelemetry() {
+    const now = new Date();
+    tUtc.textContent = `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
+    const met = Math.floor((now - LAUNCH) / 1000);
+    const d = Math.floor(met / 86400), h = Math.floor(met % 86400 / 3600), m = Math.floor(met % 3600 / 60);
+    tMet.textContent = `T+ ${d}d ${pad(h)}:${pad(m)}`;
+    const left = Math.floor(PERIOD - ((now / 1000 + 1234) % PERIOD));
+    tPass.textContent = `${pad(Math.floor(left / 60))}:${pad(left % 60)}`;
+    const secs = now.getUTCHours() * 3600 + now.getUTCMinutes() * 60 + now.getUTCSeconds();
+    const img = Math.floor(secs / 7.3);
+    if (img !== lastImg) {
+      tImg.textContent = fmt(img, 0);
+      if (lastImg !== -1 && !reduce) { tImg.classList.remove('flash'); void tImg.offsetWidth; tImg.classList.add('flash'); }
+      lastImg = img;
+    }
+  }
+  tickTelemetry();
+  setInterval(tickTelemetry, 1000);
+
+  /* ---------- Diagrama da órbita ---------- */
+  const OX = 240, OY = 150, OA = 132, OB = 40, PHI = -16 * DEG, ER = 72;
+  const ellipsePt = (th) => [OX + OA * Math.cos(th) * Math.cos(PHI) - OB * Math.sin(th) * Math.sin(PHI), OY + OA * Math.cos(th) * Math.sin(PHI) + OB * Math.sin(th) * Math.cos(PHI)];
+  function arcPath(from, to) {
+    let d = '';
+    for (let i = 0; i <= 60; i++) { const [x, y] = ellipsePt(from + (to - from) * i / 60); d += (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1); }
+    return d;
+  }
+  $('orbit-back').setAttribute('d', arcPath(Math.PI, 2 * Math.PI));
+  $('orbit-front').setAttribute('d', arcPath(0, Math.PI));
+  const satEl = $('sat');
+  function drawOrbit(t) {
+    const th = reduce ? 0.6 : (t / 1000) * 0.55;
+    const [x, y] = ellipsePt(th);
+    const back = Math.sin(th) < 0;
+    const inside = Math.hypot(x - OX, y - OY) < ER;
+    satEl.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(PHI / DEG).toFixed(1)})`);
+    satEl.setAttribute('opacity', back && inside ? '0' : back ? '0.45' : '1');
+  }
+
+  /* ---------- Cenas simuladas (5 m por pixel) ---------- */
+  const IW = 640, IH = 360;
+  function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const rnd = mulberry32(20261012);
+  const NG = 64, ngrid = new Float32Array(NG * NG).map(() => rnd());
+  const sstep = (x) => x * x * (3 - 2 * x);
+  function vnoise(x, y) {
+    const xi = Math.floor(x), yi = Math.floor(y), xf = sstep(x - xi), yf = sstep(y - yi);
+    const gi = (i, j) => ngrid[((j % NG + NG) % NG) * NG + ((i % NG + NG) % NG)];
+    const a = gi(xi, yi), b = gi(xi + 1, yi), c = gi(xi, yi + 1), d = gi(xi + 1, yi + 1);
+    return a + (b - a) * xf + (c - a) * yf + (a - b - c + d) * xf * yf;
+  }
+  const fbm = (x, y) => (vnoise(x, y) * 0.5 + vnoise(x * 2, y * 2) * 0.25 + vnoise(x * 4, y * 4) * 0.15 + vnoise(x * 8, y * 8) * 0.1);
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  const mix = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+  function segDist(px, py, s) {
+    const [x0, y0, x1, y1] = s, dx = x1 - x0, dy = y1 - y0;
+    const t = Math.max(0, Math.min(1, ((px - x0) * dx + (py - y0) * dy) / (dx * dx + dy * dy || 1)));
+    return Math.hypot(px - x0 - t * dx, py - y0 - t * dy);
+  }
+  const STOPS = [[-0.2, [44, 74, 122]], [0, [215, 48, 39]], [0.3, [252, 141, 89]], [0.5, [254, 224, 139]], [0.65, [145, 207, 96]], [0.85, [26, 152, 80]], [1, [15, 107, 55]]];
+  function ramp(v) {
+    if (v <= STOPS[0][0]) return STOPS[0][1];
+    for (let i = 1; i < STOPS.length; i++) if (v <= STOPS[i][0]) {
+      const [a, ca] = STOPS[i - 1], [b, cb] = STOPS[i];
+      return mix(ca, cb, (v - a) / (b - a));
+    }
+    return STOPS[STOPS.length - 1][1];
+  }
+  const put = (img, i, c) => { img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; };
+
+  /* Rondônia: estrada principal com ramais (espinha de peixe) */
+  function sceneDesmat(A, B) {
+    const roadY = (x) => 128 + 18 * Math.sin(x / 110);
+    const riverY = (x) => 282 + 22 * Math.sin(x / 95 + 1) + 9 * Math.sin(x / 37);
+    const segs = [];
+    for (let x = 0; x < IW; x += 16) segs.push([x, roadY(x), x + 16, roadY(x + 16)]);
+    const laterals = [];
+    for (let x = 26; x < IW - 10; x += 42) {
+      const y0 = roadY(x);
+      const up = 50 + rnd() * 70, down = Math.min(55 + rnd() * 60, riverY(x) - 34 - y0);
+      const lean = (rnd() - 0.5) * 14;
+      laterals.push({ x0: x, y0, x1: x + lean, y1: Math.max(8, y0 - up) }, { x0: x, y0, x1: x - lean, y1: y0 + down });
+    }
+    for (const l of laterals) segs.push([l.x0, l.y0, l.x1, l.y1]);
+    const spots = [[5, 2.1], [10, 1.4], [18, 0.8]].map(([i, ha]) => {
+      const l = laterals[i]; const dx = l.x1 - l.x0, dy = l.y1 - l.y0, len = Math.hypot(dx, dy) || 1;
+      return { x: l.x1 + dx / len * 10, y: l.y1 + dy / len * 10, r: 10 + ha * 3.2, ha };
+    });
+    for (let y = 0; y < IH; y++) for (let x = 0; x < IW; x++) {
+      const n = fbm(x * 0.022, y * 0.022), n2 = fbm(x * 0.09 + 40, y * 0.09 + 17);
+      const dr = Math.abs(y - riverY(x));
+      let rgb, v, hit = false;
+      for (const al of spots) if (Math.hypot(x - al.x, y - al.y) < al.r * (0.7 + 0.6 * n2)) { hit = true; break; }
+      if (dr < 5 + n * 4) { rgb = [96 + 20 * n2, 86 + 14 * n2, 64]; v = -0.12 - 0.05 * n2; }
+      else if (hit) { rgb = [214 + 20 * n2, 182 + 18 * n2, 132]; v = 0.06 + 0.08 * n2; }
+      else {
+        let d = 1e9;
+        for (const s of segs) { if (Math.abs(x - (s[0] + s[2]) / 2) > 90) continue; const dd = segDist(x, y, s); if (dd < d) d = dd; }
+        const w = 4 + 12 * n * n2 + Math.max(0, 360 - x) / 360 * 8;
+        if (d < 1.3) { rgb = [200, 176, 138]; v = 0.04; }
+        else if (d < w && dr > 16) { rgb = [146 + 34 * n2, 140 + 22 * n2, 86 + 10 * n2]; v = 0.26 + 0.18 * n2; }
+        else { const sh = 0.7 + 0.6 * n2 * n; rgb = [10 + 20 * sh, 40 + 46 * sh, 18 + 22 * sh]; v = 0.7 + 0.22 * n2; }
+      }
+      const i = (y * IW + x) * 4;
+      put(A, i, rgb); put(B, i, ramp(v));
+    }
+    return spots.map((al) => { const s = al.r * 1.9; return { x: al.x - s / 2, y: al.y - s / 2, w: s, h: s, label: fmt(al.ha, 1) + ' ha' }; });
+  }
+
+  /* Mato Grosso: pivôs centrais de 72 px (360 m) de raio, cerca de 40 ha cada */
+  function sceneSafras(A, B) {
+    const R = 72, cols = [86, 240, 394, 548], rows = [92, 268];
+    const vig = [0.80, 0.78, 0.26, 0.82, 0.76, 0.81, 0.70, 0.79];
+    const pivots = [];
+    rows.forEach((py, r) => cols.forEach((px, c) => pivots.push({ x: px, y: py, v: vig[r * 4 + c], arm: rnd() * 6.283 })));
+    const stress = pivots[3], S0 = 1.9, SPAN = 54 * DEG;
+    const soil = [172, 128, 90], leaf = [34, 104, 40];
+    for (let y = 0; y < IH; y++) for (let x = 0; x < IW; x++) {
+      const n = fbm(x * 0.03, y * 0.03), n2 = fbm(x * 0.12 + 11, y * 0.12 + 5);
+      let v, rgb = null;
+      if (Math.abs(x - 163) < 1.6 || Math.abs(x - 317) < 1.6 || Math.abs(x - 471) < 1.6 || Math.abs(y - 180) < 1.6) { rgb = [196, 172, 134]; v = 0.05; }
+      else {
+        let p = null, d = 0;
+        for (const q of pivots) { const dd = Math.hypot(x - q.x, y - q.y); if (dd < R) { p = q; d = dd; break; } }
+        if (p) {
+          v = p.v + 0.07 * (n2 - 0.5) - (Math.sin(d * 0.85) > 0.7 ? 0.04 : 0);
+          if (p === stress && d > 10) {
+            let ang = Math.atan2(y - p.y, x - p.x) - S0; ang = (ang + 6.283) % 6.283;
+            if (ang < SPAN) v = 0.45 + 0.07 * n2;
+          }
+          const ax = Math.cos(p.arm), ay = Math.sin(p.arm), along = (x - p.x) * ax + (y - p.y) * ay;
+          if (along > 0 && Math.abs((x - p.x) * ay - (y - p.y) * ax) < 0.8) rgb = [190, 190, 186];
+        } else v = 0.1 + 0.2 * n;
+      }
+      if (!rgb) { const k = clamp01((v - 0.15) / 0.7); rgb = mix(soil, leaf, k).map((c) => c * (0.88 + 0.24 * n2)); }
+      const i = (y * IW + x) * 4;
+      put(A, i, rgb); put(B, i, ramp(v));
+    }
+    const mid = S0 + SPAN / 2, cx = stress.x + Math.cos(mid) * R * 0.58, cy = stress.y + Math.sin(mid) * R * 0.58;
+    return [{ x: cx - 30, y: cy - 26, w: 60, h: 52, label: 'estresse 6,1 ha' }];
+  }
+
+  /* Rio Grande do Sul: o mesmo trecho antes e depois da cheia */
+  function sceneCheia(A, B) {
+    const riverY = (x) => 206 + 46 * Math.sin(x / 140 + 0.6) + 14 * Math.sin(x / 53);
+    const TX0 = 330, TX1 = 470, TY0 = 64, TY1 = 164, ROADX = 296;
+    const pal = [[86, 120, 52], [120, 140, 70], [158, 142, 94], [70, 104, 48], [134, 128, 72]];
+    const blocks = new Set(), hitBlocks = new Set();
+    let floodPx = 0, town = null, road = null;
+    const grow = (b, x, y) => b ? (b.x0 = Math.min(b.x0, x), b.y0 = Math.min(b.y0, y), b.x1 = Math.max(b.x1, x), b.y1 = Math.max(b.y1, y), b) : { x0: x, y0: y, x1: x, y1: y };
+    for (let y = 0; y < IH; y++) for (let x = 0; x < IW; x++) {
+      const n = fbm(x * 0.02, y * 0.02), n2 = fbm(x * 0.1 + 7, y * 0.1 + 3);
+      const d = Math.abs(y - riverY(x));
+      const river = d < 7 + 3 * n;
+      const flood = !river && d < 20 + 78 * fbm(x * 0.011 + 3, y * 0.011 + 9);
+      let base;
+      const inTown = x >= TX0 && x < TX1 && y >= TY0 && y < TY1;
+      const isRoad = Math.abs(x - ROADX) < 2 && !river;
+      let block = null;
+      if (river) base = [44, 74, 106];
+      else if (isRoad) base = [92, 92, 96];
+      else if (inTown) {
+        const bx = (x - TX0) % 20, by = (y - TY0) % 20;
+        if (bx < 15 && by < 15) { block = ((x - TX0) / 20 | 0) + ',' + ((y - TY0) / 20 | 0); blocks.add(block); base = [150, 150, 156].map((c) => c * (0.82 + 0.3 * n2)); }
+        else base = [104, 104, 108];
+      } else {
+        const fx = Math.floor((x + 13 * n) / 52), fy = Math.floor((y + 9 * n) / 38);
+        const edge = ((x + 13 * n) % 52) < 1.2 || ((y + 9 * n) % 38) < 1.2;
+        base = edge ? [60, 78, 44] : pal[(fx * 7 + fy * 13) % pal.length].map((c) => c * (0.86 + 0.28 * n2));
+      }
+      const i = (y * IW + x) * 4;
+      put(A, i, base);
+      if (flood) {
+        floodPx++;
+        const water = mix([46, 128, 156], [79, 195, 217], n2);
+        put(B, i, block ? mix(base, water, 0.55) : water);
+        if (block) hitBlocks.add(block);
+        if (inTown) town = grow(town, x, y);
+        if (isRoad) road = grow(road, x, y);
+      } else put(B, i, base);
+    }
+    $('m-flood').textContent = fmt(floodPx * 25 / 10000, 0) + ' ha';
+    $('m-blocks').textContent = hitBlocks.size + ' de ' + blocks.size;
+    const out = [];
+    if (town) out.push({ x: town.x0 - 4, y: town.y0 - 4, w: town.x1 - town.x0 + 8, h: town.y1 - town.y0 + 8, label: hitBlocks.size + ' quarteirões' });
+    if (road) out.push({ x: road.x0 - 10, y: road.y0 - 4, w: road.x1 - road.x0 + 20, h: road.y1 - road.y0 + 8, label: 'estrada submersa', below: true });
+    return out;
+  }
+
+  const SCENES = {
+    desmat: { draw: sceneDesmat, l: 'Cor natural', r: 'NDVI', geo: 'Rondônia  −9,87°  −63,02°', legend: 'ndvi' },
+    safras: { draw: sceneSafras, l: 'Cor natural', r: 'NDVI', geo: 'Sorriso (MT)  −12,54°  −55,71°', legend: 'ndvi' },
+    cheia: { draw: sceneCheia, l: 'Antes · 28 abr', r: 'Depois · 05 mai', geo: 'Rio Grande do Sul  −30,08°  −51,62°', legend: 'flood' },
+  };
+  const tcx = $('truecolor').getContext('2d'), ndx = $('ndvi').getContext('2d');
+  function build(sc) { if (!sc.A) { sc.A = tcx.createImageData(IW, IH); sc.B = ndx.createImageData(IW, IH); sc.alerts = sc.draw(sc.A, sc.B); } }
+  function showScene(key) {
+    const sc = SCENES[key];
+    build(sc);
+    tcx.putImageData(sc.A, 0, 0); ndx.putImageData(sc.B, 0, 0);
+    $('tag-l').textContent = $('split-l').textContent = sc.l;
+    $('tag-r').textContent = $('split-r').textContent = sc.r;
+    $('geo').textContent = sc.geo;
+    $('legend-ndvi').hidden = sc.legend !== 'ndvi';
+    $('legend-flood').hidden = sc.legend !== 'flood';
+    $('compare').setAttribute('aria-label', `Comparação ${sc.l} e ${sc.r}, ${sc.geo}`);
+    const box = $('alerts');
+    box.replaceChildren(...sc.alerts.map((al) => {
+      const el = document.createElement('div');
+      el.className = 'alert-box' + (al.x + al.w > IW * 0.75 ? ' flip' : '') + (al.below ? ' below' : '');
+      el.style.cssText = `left:${al.x / IW * 100}%;top:${al.y / IH * 100}%;width:${al.w / IW * 100}%;height:${al.h / IH * 100}%`;
+      const tag = document.createElement('span'); tag.textContent = al.label; el.append(tag);
+      return el;
+    }));
+  }
+  showScene('desmat');
+  /* As outras duas cenas são calculadas depois do carregamento, para a troca de aba ser instantânea */
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 600));
+  idle(() => build(SCENES.safras)); idle(() => build(SCENES.cheia));
+
+  /* ---------- Slider (shadcn) ---------- */
+  const compare = $('compare'), split = $('split');
+  let splitV = 50;
+  const setSplit = (v) => {
+    splitV = Math.max(0, Math.min(100, v));
+    compare.style.setProperty('--split', splitV);
+    split.style.setProperty('--v', splitV);
+    split.setAttribute('aria-valuenow', Math.round(splitV));
+  };
+  const dragOn = (el, onMove) => {
+    let on = false;
+    const at = (e) => { const r = el.getBoundingClientRect(); onMove((e.clientX - r.left) / r.width * 100); };
+    el.addEventListener('pointerdown', (e) => { on = true; el.setPointerCapture(e.pointerId); stopSweep(); at(e); });
+    el.addEventListener('pointermove', (e) => { if (on) at(e); });
+    el.addEventListener('pointerup', () => { on = false; });
+    el.addEventListener('pointercancel', () => { on = false; });
+  };
+  dragOn(compare, setSplit);
+  dragOn(split, setSplit);
+  split.addEventListener('keydown', (e) => {
+    const step = e.shiftKey ? 10 : 1;
+    const next = { ArrowLeft: splitV - step, ArrowDown: splitV - step, ArrowRight: splitV + step, ArrowUp: splitV + step, PageDown: splitV - 10, PageUp: splitV + 10, Home: 0, End: 100 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault(); stopSweep(); setSplit(next);
+  });
+
+  /* Varredura: a linha do scanner passa e a divisória vai e volta */
+  let sweepTl = null;
+  function stopSweep() { if (sweepTl) { sweepTl.kill(); sweepTl = null; } }
+  function sweep() {
+    if (!hasGsap || reduce) return;
+    stopSweep();
+    const s = { v: splitV };
+    sweepTl = gsap.timeline()
+      .fromTo('#scanline', { left: '-80px' }, { left: '100%', duration: 1.4, ease: 'power1.inOut' })
+      .to(s, { v: 18, duration: 0.9, ease: 'power2.inOut', onUpdate: () => setSplit(s.v) }, 0.2)
+      .to(s, { v: 82, duration: 1.2, ease: 'power2.inOut', onUpdate: () => setSplit(s.v) })
+      .to(s, { v: 50, duration: 0.8, ease: 'power2.out', onUpdate: () => setSplit(s.v) });
+  }
+
+  /* ---------- Tabs (shadcn) ---------- */
+  const triggers = [...document.querySelectorAll('#scene-tabs [role="tab"]')];
+  function selectTab(btn, focus) {
+    triggers.forEach((t) => {
+      const on = t === btn;
+      t.setAttribute('aria-selected', on); t.dataset.state = on ? 'active' : 'inactive'; t.tabIndex = on ? 0 : -1;
+      const panel = $(t.getAttribute('aria-controls'));
+      panel.hidden = !on; panel.dataset.state = on ? 'active' : 'inactive';
+    });
+    if (focus) btn.focus();
+    requestAnimationFrame(() => { showScene(btn.dataset.scene); sweep(); });
+  }
+  triggers.forEach((t, i) => {
+    t.addEventListener('click', () => { if (t.dataset.state !== 'active') selectTab(t); });
+    t.addEventListener('keydown', (e) => {
+      const j = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: triggers.length - 1 }[e.key];
+      if (j === undefined) return;
+      e.preventDefault(); selectTab(triggers[(j + triggers.length) % triggers.length], true);
+    });
+  });
+
+  /* ---------- Accordion (shadcn, type="single" collapsible) ---------- */
+  const accTriggers = document.querySelectorAll('[data-slot="accordion-trigger"]');
+  accTriggers.forEach((btn) => btn.addEventListener('click', () => {
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    accTriggers.forEach((b) => {
+      const on = b === btn && open;
+      b.setAttribute('aria-expanded', on);
+      $(b.getAttribute('aria-controls')).dataset.state = on ? 'open' : 'closed';
+    });
+  }));
+
+  /* ---------- Linha do tempo: posição de hoje ---------- */
+  const T_JUN25 = Date.UTC(2025, 5, 1), T_MAR27 = Date.UTC(2027, 2, 1);
+  const todayFrac = 2 + Math.max(0, Math.min(1, (Date.now() - T_JUN25) / (T_MAR27 - T_JUN25)));
+  $('missions').style.setProperty('--today', todayFrac.toFixed(3));
+
+  /* ---------- Toast (estilo Sonner) ---------- */
+  const ICONS = {
+    success: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    error: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',
+  };
+  function toast(kind, title, desc) {
+    const li = document.createElement('li');
+    li.className = 'toast';
+    li.style.setProperty('--c', kind === 'success' ? 'var(--success)' : 'var(--destructive)');
+    li.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[kind]}</svg><b></b><button type="button" aria-label="Fechar notificação">×</button><p></p>`;
+    li.querySelector('b').textContent = title;
+    li.querySelector('p').textContent = desc;
+    const close = () => { if (li.classList.contains('out')) return; li.classList.add('out'); setTimeout(() => li.remove(), reduce ? 0 : 250); };
+    li.querySelector('button').addEventListener('click', close);
+    $('toaster').append(li);
+    setTimeout(close, 6000);
+  }
+
+  /* ---------- Formulário ---------- */
+  $('demo-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = $('f-name'), email = $('f-email');
+    if (!name.value.trim()) { toast('error', 'Falta o seu nome', 'Preencha o campo Nome para continuar.'); name.focus(); return; }
+    if (!email.validity.valid || !email.value.trim()) { toast('error', 'E-mail inválido', 'Use um endereço como nome@empresa.com.br.'); email.focus(); return; }
+    toast('success', 'Pedido registrado', `Obrigado, ${name.value.trim().split(' ')[0]}. Este é um site de demonstração, então nada foi enviado.`);
+    e.target.reset();
+  });
+
+  /* ---------- Animações com GSAP ---------- */
+  function scramble(el, dur = 800) {
+    const final = el.dataset.text || el.textContent;
+    el.dataset.text = final;
+    if (reduce) return;
+    const glyphs = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789/<>_';
+    const start = performance.now();
+    el.setAttribute('aria-label', final);
+    (function step(now) {
+      const p = Math.min(1, (now - start) / dur), n = Math.floor(p * final.length);
+      let out = final.slice(0, n);
+      for (let i = n; i < final.length; i++) out += final[i] === ' ' ? ' ' : glyphs[(Math.random() * glyphs.length) | 0];
+      el.textContent = out;
+      if (p < 1) requestAnimationFrame(step); else { el.textContent = final; el.removeAttribute('aria-label'); }
+    })(start);
+  }
+
+  const h1 = $('hero-title');
+  if (!reduce) {
+    const words = h1.textContent.trim().split(/\s+/);
+    h1.setAttribute('aria-label', h1.textContent.trim());
+    h1.innerHTML = words.map((w) => `<span class="w" aria-hidden="true"><span>${w}</span></span>`).join(' ');
+  }
+
+  if (hasGsap && !reduce) {
+    gsap.timeline({ defaults: { ease: 'power3.out' } })
+      .from('#hero-title .w > span', { yPercent: 110, duration: 0.9, stagger: 0.05 })
+      .from('.status, .lede, .hero .actions', { y: 16, opacity: 0, duration: 0.7, stagger: 0.08 }, '-=0.6')
+      .from('.telemetry > div', { y: 10, opacity: 0, duration: 0.5, stagger: 0.07 }, '-=0.5');
+
+    gsap.to('.globe-frame', { yPercent: 10, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
+
+    document.querySelectorAll('h2.scr').forEach((h) => ScrollTrigger.create({ trigger: h, start: 'top 88%', once: true, onEnter: () => scramble(h) }));
+
+    ScrollTrigger.create({
+      trigger: '.specs', start: 'top 82%', once: true,
+      onEnter: () => document.querySelectorAll('.count').forEach((el, i) => {
+        const to = +el.dataset.to, dec = +el.dataset.dec, o = { v: 0 };
+        gsap.to(o, { v: to, duration: 1.6, delay: i * 0.08, ease: 'power2.out', onUpdate: () => { el.textContent = fmt(o.v, dec); } });
+      })
+    });
+
+    const pipe = $('pipe'), steps = pipe.querySelectorAll('li');
+    ScrollTrigger.create({
+      trigger: pipe, start: 'top 75%', end: 'bottom 45%', scrub: 0.6,
+      onUpdate: (self) => {
+        const p = self.progress;
+        pipe.style.setProperty('--p', p.toFixed(4));
+        steps.forEach((li, i) => li.classList.toggle('on', p >= i / (steps.length - 1) - 0.02));
+      }
+    });
+
+    ScrollTrigger.create({ trigger: compare, start: 'top 70%', once: true, onEnter: sweep });
+
+    ScrollTrigger.create({
+      trigger: '#faq', start: 'top 85%', once: true,
+      onEnter: () => gsap.from('#faq [data-slot="accordion-item"]', { x: -14, opacity: 0, duration: 0.5, stagger: 0.07, ease: 'power2.out' })
+    });
+
+    ScrollTrigger.create({
+      trigger: '#missions', start: 'top 80%', once: true,
+      onEnter: () => { const o = { f: 0 }; gsap.to(o, { f: 1, duration: 1.6, ease: 'power2.inOut', onUpdate: () => $('missions').style.setProperty('--fill', o.f.toFixed(3)) }); }
+    });
+  }
+
+  /* ---------- Laço principal ---------- */
+  let globeVisible = true;
+  new IntersectionObserver(([e]) => { globeVisible = e.isIntersecting; }, { threshold: 0 }).observe(globe);
+  function resize() { sizeStars(); sizeGlobe(); }
+  resize();
+  addEventListener('resize', () => { resize(); if (reduce) frame(performance.now()); });
+  function frame(now) {
+    drawStars(now);
+    if (globeVisible) drawGlobe(now);
+    drawOrbit(now);
+  }
+  if (reduce) { frame(performance.now()); addEventListener('scroll', () => drawStars(performance.now()), { passive: true }); }
+  else { (function loop(now) { if (!document.hidden) frame(now); requestAnimationFrame(loop); })(performance.now()); }
+})();
+</script>
+
+</html>
