@@ -375,7 +375,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 32px; justify-content: 
 
     <div class="instrument">
       <div class="globe-frame">
-        <canvas id="globe" role="img" aria-label="Globo animado com 12 satélites em três planos orbitais passando sobre o Brasil e sobre a estação terrestre de Alcântara. Arraste para girar."></canvas>
+        <canvas id="globe" role="img" aria-label="Globo animado com os países e continentes, o Brasil em destaque e 12 satélites em três planos orbitais passando sobre a estação terrestre de Alcântara. Arraste para girar."></canvas>
         <span class="bracket tl"></span><span class="bracket tr"></span><span class="bracket bl"></span><span class="bracket br"></span>
         <span class="hud-label a">VISTA ORTOGRÁFICA<br>arraste para girar</span>
         <span class="hud-label b"><b>●</b> Estação Alcântara (MA)<br>−2,3°  −44,4°</span>
@@ -724,6 +724,17 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 32px; justify-content: 
   for (let lat = -75; lat <= 75; lat += 15) for (let lon = 0; lon < 360; lon += 3) gridPts.push({ v: vec(lat, lon), lat });
   for (let lon = 0; lon < 360; lon += 20) for (let lat = -87; lat <= 87; lat += 3) gridPts.push({ v: vec(lat, lon), lat });
   for (let lat = -34; lat <= 6; lat += 1.4) for (let lon = -74; lon <= -34; lon += 1.4) if (inPoly(lon, lat, BRAZIL)) brPts.push({ v: vec(lat, lon), lat });
+  // Países e continentes (Natural Earth 1:110m, gerado em mundo.json). Sem o arquivo, fica só o Brasil acima.
+  const landPts = [], borderLines = [];
+  const CONTINENTS = [['AMÉRICA DO NORTE', 46, -102], ['AMÉRICA DO SUL', -42, -66], ['EUROPA', 52, 18], ['ÁFRICA', 6, 20], ['ÁSIA', 50, 92], ['OCEANIA', -25, 134], ['ANTÁRTIDA', -76, 30]]
+    .map(([n, lat, lon]) => ({ n, v: vec(lat, lon) }));
+  fetch('mundo.json').then((r) => r.json()).then((m) => {
+    for (let i = 0; i < m.land.length; i += 2) landPts.push({ v: vec(m.land[i], m.land[i + 1]), lat: m.land[i] });
+    brPts.length = 0;
+    for (let i = 0; i < m.br.length; i += 2) brPts.push({ v: vec(m.br[i], m.br[i + 1]), lat: m.br[i] });
+    for (const b of m.borders) { const line = []; for (let i = 0; i < b.length; i += 2) line.push(vec(b[i], b[i + 1])); borderLines.push(line); }
+    if (reduce) drawGlobe(performance.now());
+  }).catch(() => {});
   const STATION = vec(-2.3, -44.4);
   const SAO_PAULO = vec(-23.5, -46.6);
   const PLANES = [-58, 2, 62];
@@ -771,12 +782,42 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 32px; justify-content: 
       g.fillStyle = `rgba(142,155,179,${0.12 + 0.4 * z})`;
       g.fillRect(gcx + x * R - 0.6, gcy - y * R - 0.6, 1.2, 1.2);
     }
+    for (const pt of landPts) {
+      if ((pt.lat + 90) / 180 > band) continue;
+      const [x, y, z] = view(pt.v, a);
+      if (z < 0) continue;
+      g.fillStyle = `rgba(150,172,212,${0.18 + 0.5 * z})`;
+      g.fillRect(gcx + x * R - 0.8, gcy - y * R - 0.8, 1.6, 1.6);
+    }
+    if (borderLines.length) {
+      g.globalAlpha = boot; g.lineWidth = 0.7; g.strokeStyle = 'rgba(160,190,240,0.32)';
+      g.beginPath();
+      for (const line of borderLines) {
+        let pen = false;
+        for (const v of line) {
+          const [x, y, z] = view(v, a);
+          if (z < 0.02) { pen = false; continue; }
+          if (pen) g.lineTo(gcx + x * R, gcy - y * R); else { g.moveTo(gcx + x * R, gcy - y * R); pen = true; }
+        }
+      }
+      g.stroke(); g.globalAlpha = 1;
+    }
     for (const pt of brPts) {
       if ((pt.lat + 90) / 180 > band) continue;
       const [x, y, z] = view(pt.v, a);
       if (z < 0) continue;
       g.fillStyle = `rgba(91,155,255,${0.35 + 0.6 * z})`;
       g.fillRect(gcx + x * R - 1, gcy - y * R - 1, 2, 2);
+    }
+    if (landPts.length) {
+      g.font = '500 9.5px "Roboto Mono", monospace'; g.textAlign = 'center';
+      for (const c of CONTINENTS) {
+        const [x, y, z] = view(c.v, a);
+        if (z < 0.15) continue;
+        g.fillStyle = `rgba(238,242,248,${0.75 * boot * Math.min(1, (z - 0.15) / 0.25)})`;
+        g.fillText(c.n, gcx + x * R, gcy - y * R);
+      }
+      g.textAlign = 'start';
     }
 
     const sv = view(STATION, a);
